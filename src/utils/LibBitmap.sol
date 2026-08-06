@@ -93,7 +93,7 @@ library LibBitmap {
         assembly {
             mstore(0x00, bitmap.slot)
             let slot := add(and(keccak256(0x00, 0x20), not(0x7f)), shr(8, index))
-            let storageValue := sload(slot) 
+            let storageValue := sload(slot)
             let shift := and(index, 0xff)
             sstore(
                 slot,
@@ -118,7 +118,10 @@ library LibBitmap {
                 let bucketEnd := add(bucket, shr(8, add(amount, shift)))
                 amount := and(add(amount, shift), 0xff)
                 shift := 0
-                for { bucket := add(bucket, 1)} iszero(eq(bucket, bucketEnd)) { bucket := add(bucket, 1) } {
+                for { bucket := add(bucket, 1) } iszero(eq(bucket, bucketEnd)) { bucket := add(
+                    bucket,
+                    1
+                ) } {
                     sstore(add(base, bucket), max)
                 }
             }
@@ -141,15 +144,15 @@ library LibBitmap {
                 let bucketEnd := add(bucket, shr(8, add(amount, shift)))
                 amount := and(add(amount, shift), 0xff)
                 shift := 0
-                for { bucket := add(bucket, 1)} iszero(eq(bucket, bucketEnd)) { bucket := add(bucket, 1) } {
+                for { bucket := add(bucket, 1) } iszero(eq(bucket, bucketEnd)) { bucket := add(
+                    bucket,
+                    1
+                ) } {
                     sstore(add(base, bucket), 0)
                 }
             }
             let slot := add(base, bucket)
-            sstore(
-                slot,
-                and(sload(slot), not(shl(shift, shr(sub(256, amount), not(0)))))
-            )
+            sstore(slot, and(sload(slot), not(shl(shift, shr(sub(256, amount), not(0))))))
         }
     }
 
