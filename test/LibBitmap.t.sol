@@ -224,7 +224,7 @@ contract LibBitmapTest is SoladyTest {
         assertEq(bitmap.findFirstUnset(256, 1000), 256);
         bitmap.set(0);
         assertEq(bitmap.findFirstUnset(0, 1000), 1);
-        bitmap.map[0] = type(uint256).max;
+        _setBucket(0, type(uint256).max);
         assertEq(bitmap.findFirstUnset(0, 1000), 256);
         bitmap.set(256);
         assertEq(bitmap.findFirstUnset(0, 1000), 257);
@@ -238,7 +238,7 @@ contract LibBitmapTest is SoladyTest {
     function testBitmapFindFirstUnset(uint256 begin, uint256 upTo, bytes32) public {
         unchecked {
             for (uint256 i; i != 5; ++i) {
-                bitmap.map[i] = type(uint256).max;
+                _setBucket(i, type(uint256).max);
             }
         }
 
@@ -407,8 +407,17 @@ contract LibBitmapTest is SoladyTest {
     function _resetBitmap(uint256 bucketValue, uint256 bucketEnd) private {
         unchecked {
             for (uint256 i; i < bucketEnd; ++i) {
-                bitmap.map[i] = bucketValue;
+                _setBucket(i, bucketValue);
             }
+        }
+    }
+
+    /// @dev Writes a bucket directly, mirroring the library's page-aligned layout.
+    function _setBucket(uint256 bucket, uint256 value) private {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, bitmap.slot)
+            sstore(add(and(keccak256(0x00, 0x20), not(0x7f)), bucket), value)
         }
     }
 }
