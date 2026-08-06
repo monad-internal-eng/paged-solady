@@ -21,9 +21,10 @@ library LibBitmap {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev A bitmap in storage
-    /// @dev _ptr simply points to the first storage slot of the bitmap
-    /// @dev The actual data is aligned to the page boundary and assigned serially
-    /// @dev after the first boundary
+    /// @dev _ptr serves as phantom data to provide a storage slot for the
+    /// @dev bitmap. A page aligned slot is used to store the bitmap at
+    /// @dev `keccak256(bitmap.slot) & not(0x7f)` and the bitmap is stored
+    /// @dev serially in 256-bit buckets starting from that slot.
     struct Bitmap {
         uint256 _ptr;
     }
@@ -40,7 +41,7 @@ library LibBitmap {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x00, bitmap.slot) // store bitmap slot value
-            let slot := and(keccak256(0x00, 0x20), not(0x7f)) // calculate page-aligned slot
+            let slot := and(keccak256(0x00, 0x20), not(0x7f))
             let bucket := sload(add(slot, shr(8, index))) // get bucket by shifting idx
             isSet := and(shr(and(index, 0xff), bucket), 1) // shift bucket to get bit at idx
         }
@@ -51,7 +52,7 @@ library LibBitmap {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x00, bitmap.slot)
-            let slot := and(keccak256(0x00, 0x20), not(0x7f)) // calculate page-aligned slot
+            let slot := and(keccak256(0x00, 0x20), not(0x7f))
             let bucket := sload(add(slot, shr(8, index))) // get bucket by shifting idx
             sstore(add(slot, shr(8, index)), or(bucket, shl(and(index, 0xff), 1))) // set bit at idx
         }
@@ -62,7 +63,7 @@ library LibBitmap {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x00, bitmap.slot)
-            let slot := and(keccak256(0x00, 0x20), not(0x7f)) // calculate page-aligned slot
+            let slot := and(keccak256(0x00, 0x20), not(0x7f))
             let bucket := sload(add(slot, shr(8, index))) // get bucket by shifting idx
             sstore(add(slot, shr(8, index)), and(bucket, not(shl(and(index, 0xff), 1)))) // unset bit at idx
         }
@@ -74,7 +75,7 @@ library LibBitmap {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x00, bitmap.slot)
-            let slot := add(and(keccak256(0x00, 0x20), not(0x7f)), shr(8, index)) // calculate page-aligned bucket slot
+            let slot := add(and(keccak256(0x00, 0x20), not(0x7f)), shr(8, index))
             let shift := and(index, 0xff)
             let storageValue := xor(sload(slot), shl(shift, 1))
             // It makes sense to return the `newIsSet`,
@@ -91,7 +92,7 @@ library LibBitmap {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x00, bitmap.slot)
-            let slot := add(and(keccak256(0x00, 0x20), not(0x7f)), shr(8, index)) // calculate page-aligned bucket
+            let slot := add(and(keccak256(0x00, 0x20), not(0x7f)), shr(8, index))
             let storageValue := sload(slot) 
             let shift := and(index, 0xff)
             sstore(
@@ -109,8 +110,8 @@ library LibBitmap {
             let max := not(0)
             let shift := and(start, 0xff)
             mstore(0x00, bitmap.slot)
-            let base := and(keccak256(0x00, 0x20), not(0x7f)) // calculate page-aligned base slot
-            let bucket := shr(8, start) // calculate page-aligned bucket slot
+            let base := and(keccak256(0x00, 0x20), not(0x7f))
+            let bucket := shr(8, start) // bucket index
             if iszero(lt(add(shift, amount), 257)) {
                 let slot := add(base, bucket)
                 sstore(slot, or(sload(slot), shl(shift, max)))
@@ -121,7 +122,7 @@ library LibBitmap {
                     sstore(add(base, bucket), max)
                 }
             }
-            let slot := add(base, bucket) // calculate page-aligned bucket slot
+            let slot := add(base, bucket)
             sstore(slot, or(sload(slot), shl(shift, shr(sub(256, amount), max))))
         }
     }
@@ -132,8 +133,8 @@ library LibBitmap {
         assembly {
             let shift := and(start, 0xff)
             mstore(0x00, bitmap.slot)
-            let base := and(keccak256(0x00, 0x20), not(0x7f)) // calculate page-aligned base slot
-            let bucket := shr(8, start) // calculate page-aligned bucket slot
+            let base := and(keccak256(0x00, 0x20), not(0x7f))
+            let bucket := shr(8, start) // bucket index
             if iszero(lt(add(shift, amount), 257)) {
                 let slot := add(base, bucket)
                 sstore(slot, and(sload(slot), not(shl(shift, not(0)))))
@@ -144,7 +145,7 @@ library LibBitmap {
                     sstore(add(base, bucket), 0)
                 }
             }
-            let slot := add(base, bucket) // calculate page-aligned bucket slot
+            let slot := add(base, bucket)
             sstore(
                 slot,
                 and(sload(slot), not(shl(shift, shr(sub(256, amount), not(0)))))
@@ -166,7 +167,7 @@ library LibBitmap {
             /// @solidity memory-safe-assembly
             assembly {
                 mstore(0x00, bitmap.slot)
-                base := and(keccak256(0x00, 0x20), not(0x7f)) // calculate page-aligned slot
+                base := and(keccak256(0x00, 0x20), not(0x7f))
             }
             uint256 bucketValue;
             if (!(amount + shift < 257)) {
@@ -208,7 +209,7 @@ library LibBitmap {
         assembly {
             mstore(0x00, bitmap.slot)
             let offset := and(0xff, not(upTo)) // `256 - (255 & upTo) - 1`.
-            let base := and(keccak256(0x00, 0x20), not(0x7f)) // calculate page-aligned slot
+            let base := and(keccak256(0x00, 0x20), not(0x7f))
             bits := shr(offset, shl(offset, sload(add(base, bucket)))) // `sload(add(base, bucket)) << offset >> offset`.
             if iszero(or(bits, iszero(bucket))) {
                 for {} 1 {} {
@@ -241,8 +242,8 @@ library LibBitmap {
         assembly {
             mstore(0x00, bitmap.slot)
             let offset := and(0xff, begin)
-            let base := and(keccak256(0x00, 0x20), not(0x7f)) // calculate page-aligned slot
-            negBits := shl(offset, shr(offset, not(sload(add(base, bucket))))) // `not(sload(add(base, bucket))) << offset >> offset`.
+            let base := and(keccak256(0x00, 0x20), not(0x7f))
+            negBits := shl(offset, shr(offset, not(sload(add(base, bucket))))) // not(sload(add(base, bucket))) >> offset << offset
             if iszero(negBits) {
                 let lastBucket := shr(8, upTo)
                 for {} 1 {} {
