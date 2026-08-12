@@ -690,8 +690,7 @@ contract LibMapTest is SoladyTest {
                 for (uint256 i; i < 3; ++i) {
                     m.set(i, j + 1, 0);
                     assertEq(m.get(i, 0), 0);
-                    (bool found, uint256 index) =
-                        LibMap.searchSorted(_slotOf(m), i, j, j + 2, 0);
+                    (bool found, uint256 index) = LibMap.searchSorted(_slotOf(m), i, j, j + 2, 0);
                     assertFalse(found);
                     assertEq(index, j);
                 }

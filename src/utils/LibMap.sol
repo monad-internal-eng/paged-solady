@@ -50,7 +50,7 @@ library LibMap {
             mstore(0x20, map.slot)
             let base := and(keccak256(0x00, 0x40), not(0x7f))
             let bucket := add(base, and(shr(5, index), 0x7f)) // Storage bucket.
-            result := byte(and(31, not(index)),sload(bucket))
+            result := byte(and(31, not(index)), sload(bucket))
         }
     }
 
