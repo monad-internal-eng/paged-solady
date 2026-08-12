@@ -42,6 +42,80 @@ contract LibMapTest is SoladyTest {
         t.v1 = _random();
     }
 
+    function _slotOf(LibMap.Uint8Map storage m) private pure returns (uint256 s) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            s := m.slot
+        }
+    }
+
+    function _slotOf(LibMap.Uint16Map storage m) private pure returns (uint256 s) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            s := m.slot
+        }
+    }
+
+    function _slotOf(LibMap.Uint32Map storage m) private pure returns (uint256 s) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            s := m.slot
+        }
+    }
+
+    function _slotOf(LibMap.Uint40Map storage m) private pure returns (uint256 s) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            s := m.slot
+        }
+    }
+
+    function _slotOf(LibMap.Uint64Map storage m) private pure returns (uint256 s) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            s := m.slot
+        }
+    }
+
+    function _slotOf(LibMap.Uint128Map storage m) private pure returns (uint256 s) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            s := m.slot
+        }
+    }
+
+    function _slotOf(mapping(uint256 => uint256) storage m) private pure returns (uint256 s) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            s := m.slot
+        }
+    }
+
+    function _generalMap(uint256 slot)
+        private
+        pure
+        returns (mapping(uint256 => uint256) storage m)
+    {
+        /// @solidity memory-safe-assembly
+        assembly {
+            m.slot := slot
+        }
+    }
+
+    /// @dev Reads the raw storage word of the paged bucket at (`page`, `bucketOffset`).
+    function _pagedWord(uint256 mapSlot, uint256 page, uint256 bucketOffset)
+        private
+        view
+        returns (uint256 result)
+    {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, page)
+            mstore(0x20, mapSlot)
+            result := sload(add(and(keccak256(0x00, 0x40), not(0x7f)), bucketOffset))
+        }
+    }
+
     function getUint8(uint256 index) public view returns (uint8 result) {
         result = uint8s[0].get(index);
     }
@@ -77,7 +151,7 @@ contract LibMapTest is SoladyTest {
     function testUint8MapSetAndGet(uint256) public {
         uint8 u = uint8(_random());
         uint8s[0].set(0, u);
-        assertEq(uint8s[0].map[0], u);
+        assertEq(_pagedWord(_slotOf(uint8s[0]), 0, 0), u);
         unchecked {
             for (uint256 t; t < 8; ++t) {
                 uint256 r = _random();
@@ -128,7 +202,7 @@ contract LibMapTest is SoladyTest {
     function testUint16MapSetAndGet(uint256) public {
         uint16 u = uint16(_random());
         uint16s[0].set(0, u);
-        assertEq(uint16s[0].map[0], u);
+        assertEq(_pagedWord(_slotOf(uint16s[0]), 0, 0), u);
         unchecked {
             for (uint256 t; t < 8; ++t) {
                 uint256 r = _random();
@@ -179,7 +253,7 @@ contract LibMapTest is SoladyTest {
     function testUint32MapSetAndGet(uint256) public {
         uint32 u = uint32(_random());
         uint32s[0].set(0, u);
-        assertEq(uint32s[0].map[0], u);
+        assertEq(_pagedWord(_slotOf(uint32s[0]), 0, 0), u);
         unchecked {
             for (uint256 t; t < 8; ++t) {
                 uint256 r = _random();
@@ -230,7 +304,7 @@ contract LibMapTest is SoladyTest {
     function testUint40MapSetAndGet(uint256) public {
         uint40 u = uint40(_random());
         uint40s[0].set(0, u);
-        assertEq(uint40s[0].map[0], u);
+        assertEq(_pagedWord(_slotOf(uint40s[0]), 0, 0), u);
         unchecked {
             for (uint256 t; t < 8; ++t) {
                 uint256 r = _random();
@@ -281,7 +355,7 @@ contract LibMapTest is SoladyTest {
     function testUint64MapSetAndGet(uint256) public {
         uint64 u = uint64(_random());
         uint64s[0].set(0, u);
-        assertEq(uint64s[0].map[0], u);
+        assertEq(_pagedWord(_slotOf(uint64s[0]), 0, 0), u);
         unchecked {
             for (uint256 t; t < 8; ++t) {
                 uint256 r = _random();
@@ -332,7 +406,7 @@ contract LibMapTest is SoladyTest {
     function testUint128MapSetAndGet(uint256) public {
         uint128 u = uint128(_random());
         uint128s[0].set(0, u);
-        assertEq(uint128s[0].map[0], u);
+        assertEq(_pagedWord(_slotOf(uint128s[0]), 0, 0), u);
         unchecked {
             for (uint256 t; t < 8; ++t) {
                 uint256 r = _random();
@@ -453,17 +527,20 @@ contract LibMapTest is SoladyTest {
             if (t.end < type(uint256).max) map.set(t.end, _random(), bitWidth);
 
             uint256 notFoundValue = _generateNotFoundValue(t.o);
+            uint256 mapSlot = _slotOf(map);
 
-            (t.found, t.index) = map.searchSorted(notFoundValue, t.o, t.end, bitWidth);
+            (t.found, t.index) = LibMap.searchSorted(mapSlot, notFoundValue, t.o, t.end, bitWidth);
             assertFalse(t.found);
             assertEq(t.index, _nearestIndexBefore(map, notFoundValue, t.o, t.n, bitWidth));
 
             uint256 end = t.o - (t.o > 0 ? _random() % t.o : 0);
-            (t.found, t.index) = map.searchSorted(t.randomIndexValue, t.o, end, bitWidth);
+            (t.found, t.index) =
+                LibMap.searchSorted(mapSlot, t.randomIndexValue, t.o, end, bitWidth);
             assertFalse(t.found);
             assertEq(t.index, t.o);
 
-            (t.found, t.index) = map.searchSorted(t.randomIndexValue, t.o, t.end, bitWidth);
+            (t.found, t.index) =
+                LibMap.searchSorted(mapSlot, t.randomIndexValue, t.o, t.end, bitWidth);
             assertTrue(t.found);
             assertEq(t.index, t.randomIndex);
         }
@@ -504,7 +581,7 @@ contract LibMapTest is SoladyTest {
     function testUint8MapSearchSorted(uint256) public {
         unchecked {
             LibMap.Uint8Map storage m = uint8s[0];
-            _SearchSortedTestVars memory t = _searchSortedTestVars(m.map, 8);
+            _SearchSortedTestVars memory t = _searchSortedTestVars(_generalMap(_slotOf(m)), 8);
             assertEq(m.get(t.randomIndex), t.randomIndexValue);
             (bool found, uint256 index) = m.searchSorted(uint8(t.randomIndexValue), t.o, t.end);
             assertTrue(found == t.found && index == t.index);
@@ -514,7 +591,7 @@ contract LibMapTest is SoladyTest {
     function testUint16MapSearchSorted(uint256) public {
         unchecked {
             LibMap.Uint16Map storage m = uint16s[0];
-            _SearchSortedTestVars memory t = _searchSortedTestVars(m.map, 16);
+            _SearchSortedTestVars memory t = _searchSortedTestVars(_generalMap(_slotOf(m)), 16);
             assertEq(m.get(t.randomIndex), t.randomIndexValue);
             (bool found, uint256 index) = m.searchSorted(uint16(t.randomIndexValue), t.o, t.end);
             assertTrue(found == t.found && index == t.index);
@@ -524,7 +601,7 @@ contract LibMapTest is SoladyTest {
     function testUint32MapSearchSorted(uint256) public {
         unchecked {
             LibMap.Uint32Map storage m = uint32s[0];
-            _SearchSortedTestVars memory t = _searchSortedTestVars(m.map, 32);
+            _SearchSortedTestVars memory t = _searchSortedTestVars(_generalMap(_slotOf(m)), 32);
             assertEq(m.get(t.randomIndex), t.randomIndexValue);
             (bool found, uint256 index) = m.searchSorted(uint32(t.randomIndexValue), t.o, t.end);
             assertTrue(found == t.found && index == t.index);
@@ -534,7 +611,7 @@ contract LibMapTest is SoladyTest {
     function testUint40MapSearchSorted(uint256) public {
         unchecked {
             LibMap.Uint40Map storage m = uint40s[0];
-            _SearchSortedTestVars memory t = _searchSortedTestVars(m.map, 40);
+            _SearchSortedTestVars memory t = _searchSortedTestVars(_generalMap(_slotOf(m)), 40);
             assertEq(m.get(t.randomIndex), t.randomIndexValue);
             (bool found, uint256 index) = m.searchSorted(uint40(t.randomIndexValue), t.o, t.end);
             assertTrue(found == t.found && index == t.index);
@@ -544,7 +621,7 @@ contract LibMapTest is SoladyTest {
     function testUint64MapSearchSorted(uint256) public {
         unchecked {
             LibMap.Uint64Map storage m = uint64s[0];
-            _SearchSortedTestVars memory t = _searchSortedTestVars(m.map, 64);
+            _SearchSortedTestVars memory t = _searchSortedTestVars(_generalMap(_slotOf(m)), 64);
             assertEq(m.get(t.randomIndex), t.randomIndexValue);
             (bool found, uint256 index) = m.searchSorted(uint64(t.randomIndexValue), t.o, t.end);
             assertTrue(found == t.found && index == t.index);
@@ -554,7 +631,7 @@ contract LibMapTest is SoladyTest {
     function testUint128MapSearchSorted(uint256) public {
         unchecked {
             LibMap.Uint128Map storage m = uint128s[0];
-            _SearchSortedTestVars memory t = _searchSortedTestVars(m.map, 128);
+            _SearchSortedTestVars memory t = _searchSortedTestVars(_generalMap(_slotOf(m)), 128);
             assertEq(m.get(t.randomIndex), t.randomIndexValue);
             (bool found, uint256 index) = m.searchSorted(uint128(t.randomIndexValue), t.o, t.end);
             assertTrue(found == t.found && index == t.index);
@@ -613,7 +690,8 @@ contract LibMapTest is SoladyTest {
                 for (uint256 i; i < 3; ++i) {
                     m.set(i, j + 1, 0);
                     assertEq(m.get(i, 0), 0);
-                    (bool found, uint256 index) = m.searchSorted(i, j, j + 2, 0);
+                    (bool found, uint256 index) =
+                        LibMap.searchSorted(_slotOf(m), i, j, j + 2, 0);
                     assertFalse(found);
                     assertEq(index, j);
                 }
@@ -629,10 +707,76 @@ contract LibMapTest is SoladyTest {
                 assertEq(m.get(i, 32), i + 1);
             }
             for (uint256 j = 1; j < 900; j += 37) {
-                (bool found, uint256 index) = m.searchSorted(j, 0, 1000, 32);
+                (bool found, uint256 index) = LibMap.searchSorted(_slotOf(m), j, 0, 1000, 32);
                 assertTrue(found);
                 assertEq(index, j - 1);
             }
+        }
+    }
+
+    function testMapSetAndGetAcrossPages(uint256) public {
+        uint256 i0 = _random();
+        uint256 i1 = _random();
+        uint256 v0 = _random();
+        uint256 v1 = _random();
+        while (i0 == i1) i1 = _random();
+        uint8s[0].set(i0, uint8(v0));
+        uint8s[0].set(i1, uint8(v1));
+        assertEq(uint8s[0].get(i0), uint8(v0));
+        assertEq(uint8s[0].get(i1), uint8(v1));
+        uint16s[0].set(i0, uint16(v0));
+        uint16s[0].set(i1, uint16(v1));
+        assertEq(uint16s[0].get(i0), uint16(v0));
+        assertEq(uint16s[0].get(i1), uint16(v1));
+        uint32s[0].set(i0, uint32(v0));
+        uint32s[0].set(i1, uint32(v1));
+        assertEq(uint32s[0].get(i0), uint32(v0));
+        assertEq(uint32s[0].get(i1), uint32(v1));
+        uint40s[0].set(i0, uint40(v0));
+        uint40s[0].set(i1, uint40(v1));
+        assertEq(uint40s[0].get(i0), uint40(v0));
+        assertEq(uint40s[0].get(i1), uint40(v1));
+        uint64s[0].set(i0, uint64(v0));
+        uint64s[0].set(i1, uint64(v1));
+        assertEq(uint64s[0].get(i0), uint64(v0));
+        assertEq(uint64s[0].get(i1), uint64(v1));
+        uint128s[0].set(i0, uint128(v0));
+        uint128s[0].set(i1, uint128(v1));
+        assertEq(uint128s[0].get(i0), uint128(v0));
+        assertEq(uint128s[0].get(i1), uint128(v1));
+    }
+
+    function testGeneralMapSetAndGetAcrossPages(uint256) public {
+        uint256 bitWidth = _bound(_random(), 1, 256);
+        uint256 valueMask = bitWidth == 256 ? type(uint256).max : (1 << bitWidth) - 1;
+        uint256 i0 = _random();
+        uint256 i1 = _random();
+        uint256 v0 = _random();
+        uint256 v1 = _random();
+        while (i0 == i1) i1 = _random();
+        mapping(uint256 => uint256) storage m = generalMaps[0];
+        m.set(i0, v0, bitWidth);
+        m.set(i1, v1, bitWidth);
+        assertEq(m.get(i0, bitWidth), v0 & valueMask);
+        assertEq(m.get(i1, bitWidth), v1 & valueMask);
+    }
+
+    function testTypedAndGeneralMapLayoutsMatch(uint256) public {
+        uint256 index = _random();
+        uint256 v = _random();
+        uint32s[0].set(index, uint32(v));
+        assertEq(_generalMap(_slotOf(uint32s[0])).get(index, 32), uint32(v));
+        uint40s[0].set(index, uint40(v));
+        assertEq(_generalMap(_slotOf(uint40s[0])).get(index, 40), uint40(v));
+        mapping(uint256 => uint256) storage m = generalMaps[0];
+        m.set(index, v, 128);
+        assertEq(_uint128MapAt(_slotOf(m)).get(index), uint128(v));
+    }
+
+    function _uint128MapAt(uint256 slot) private pure returns (LibMap.Uint128Map storage m) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            m.slot := slot
         }
     }
 
