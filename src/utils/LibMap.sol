@@ -9,31 +9,37 @@ library LibMap {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev A uint8 map in storage.
+    /// @dev _ptr is the storage pointer to the first bucket of the map.
     struct Uint8Map {
         uint256 _ptr;
     }
 
     /// @dev A uint16 map in storage.
+    /// @dev _ptr is the storage pointer to the first bucket of the map.
     struct Uint16Map {
         uint256 _ptr;
     }
 
     /// @dev A uint32 map in storage.
+    /// @dev _ptr is the storage pointer to the first bucket of the map.
     struct Uint32Map {
         uint256 _ptr;
     }
 
     /// @dev A uint40 map in storage. Useful for storing timestamps up to 34841 A.D.
+    /// @dev _ptr is the storage pointer to the first bucket of the map.
     struct Uint40Map {
         uint256 _ptr;
     }
 
     /// @dev A uint64 map in storage.
+    /// @dev _ptr is the storage pointer to the first bucket of the map.
     struct Uint64Map {
         uint256 _ptr;
     }
 
     /// @dev A uint128 map in storage.
+    /// @dev _ptr is the storage pointer to the first bucket of the map.
     struct Uint128Map {
         uint256 _ptr;
     }
@@ -126,7 +132,7 @@ library LibMap {
     function get(Uint40Map storage map, uint256 index) internal view returns (uint40 result) {
         /// @solidity memory-safe-assembly
         assembly {
-            mstore(0x00, div(index, 768)) // 768 = 256 / 40 * 128
+            mstore(0x00, div(index, 768)) // 768 = floor(256 / 40) * 128
             mstore(0x20, map.slot)
             let base := and(keccak256(0x00, 0x40), not(0x7f))
             let bucket := add(base, mod(div(index, 6), 128)) // Storage bucket.
@@ -138,7 +144,7 @@ library LibMap {
     function set(Uint40Map storage map, uint256 index, uint40 value) internal {
         /// @solidity memory-safe-assembly
         assembly {
-            mstore(0x00, div(index, 768)) // 768 = 256 / 40 * 128
+            mstore(0x00, div(index, 768)) // 768 = floor(256 / 40) * 128
             mstore(0x20, map.slot)
             let base := and(keccak256(0x00, 0x40), not(0x7f))
             let bucket := add(base, mod(div(index, 6), 128)) // Storage bucket.
