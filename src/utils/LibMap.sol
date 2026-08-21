@@ -270,7 +270,7 @@ library LibMap {
         assembly {
             slot := map.slot
         }
-        return searchSorted(slot, needle, start, end, 8);
+        return _searchSorted(slot, needle, start, end, 8);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -284,7 +284,7 @@ library LibMap {
         assembly {
             slot := map.slot
         }
-        return searchSorted(slot, needle, start, end, 16);
+        return _searchSorted(slot, needle, start, end, 16);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -298,7 +298,7 @@ library LibMap {
         assembly {
             slot := map.slot
         }
-        return searchSorted(slot, needle, start, end, 32);
+        return _searchSorted(slot, needle, start, end, 32);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -312,7 +312,7 @@ library LibMap {
         assembly {
             slot := map.slot
         }
-        return searchSorted(slot, needle, start, end, 40);
+        return _searchSorted(slot, needle, start, end, 40);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -326,7 +326,7 @@ library LibMap {
         assembly {
             slot := map.slot
         }
-        return searchSorted(slot, needle, start, end, 64);
+        return _searchSorted(slot, needle, start, end, 64);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -340,17 +340,33 @@ library LibMap {
         assembly {
             slot := map.slot
         }
-        return searchSorted(slot, needle, start, end, 128);
+        return _searchSorted(slot, needle, start, end, 128);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
     function searchSorted(
-        uint256 slot,
+        mapping(uint256 => uint256) storage map,
         uint256 needle,
         uint256 start,
         uint256 end,
         uint256 bitWidth
     ) internal view returns (bool found, uint256 index) {
+        uint256 slot;
+        /// @solidity memory-safe-assembly
+        assembly {
+            slot := map.slot
+        }
+        return _searchSorted(slot, needle, start, end, bitWidth);
+    }
+
+    /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
+    function _searchSorted(
+        uint256 slot,
+        uint256 needle,
+        uint256 start,
+        uint256 end,
+        uint256 bitWidth
+    ) private view returns (bool found, uint256 index) {
         unchecked {
             if (start >= end) end = start;
             uint256 t;

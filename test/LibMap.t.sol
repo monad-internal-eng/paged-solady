@@ -527,20 +527,17 @@ contract LibMapTest is SoladyTest {
             if (t.end < type(uint256).max) map.set(t.end, _random(), bitWidth);
 
             uint256 notFoundValue = _generateNotFoundValue(t.o);
-            uint256 mapSlot = _slotOf(map);
 
-            (t.found, t.index) = LibMap.searchSorted(mapSlot, notFoundValue, t.o, t.end, bitWidth);
+            (t.found, t.index) = LibMap.searchSorted(map, notFoundValue, t.o, t.end, bitWidth);
             assertFalse(t.found);
             assertEq(t.index, _nearestIndexBefore(map, notFoundValue, t.o, t.n, bitWidth));
 
             uint256 end = t.o - (t.o > 0 ? _random() % t.o : 0);
-            (t.found, t.index) =
-                LibMap.searchSorted(mapSlot, t.randomIndexValue, t.o, end, bitWidth);
+            (t.found, t.index) = LibMap.searchSorted(map, t.randomIndexValue, t.o, end, bitWidth);
             assertFalse(t.found);
             assertEq(t.index, t.o);
 
-            (t.found, t.index) =
-                LibMap.searchSorted(mapSlot, t.randomIndexValue, t.o, t.end, bitWidth);
+            (t.found, t.index) = LibMap.searchSorted(map, t.randomIndexValue, t.o, t.end, bitWidth);
             assertTrue(t.found);
             assertEq(t.index, t.randomIndex);
         }
@@ -690,7 +687,7 @@ contract LibMapTest is SoladyTest {
                 for (uint256 i; i < 3; ++i) {
                     m.set(i, j + 1, 0);
                     assertEq(m.get(i, 0), 0);
-                    (bool found, uint256 index) = LibMap.searchSorted(_slotOf(m), i, j, j + 2, 0);
+                    (bool found, uint256 index) = LibMap.searchSorted(m, i, j, j + 2, 0);
                     assertFalse(found);
                     assertEq(index, j);
                 }
@@ -706,7 +703,7 @@ contract LibMapTest is SoladyTest {
                 assertEq(m.get(i, 32), i + 1);
             }
             for (uint256 j = 1; j < 900; j += 37) {
-                (bool found, uint256 index) = LibMap.searchSorted(_slotOf(m), j, 0, 1000, 32);
+                (bool found, uint256 index) = LibMap.searchSorted(m, j, 0, 1000, 32);
                 assertTrue(found);
                 assertEq(index, j - 1);
             }
