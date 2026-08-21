@@ -21,10 +21,7 @@ library LibBitmap {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev A bitmap in storage
-    /// @dev _ptr serves as phantom data to provide a storage slot for the
-    /// @dev bitmap. A page aligned slot is used to store the bitmap at
-    /// @dev `keccak256(bitmap.slot) & not(0x7f)` and the bitmap is stored
-    /// @dev serially in 256-bit buckets starting from that slot.
+    /// @dev _ptr serves as a virtual pointer for the struct
     struct Bitmap {
         uint256 _ptr;
     }
