@@ -245,7 +245,8 @@ library LibBitmap {
             let offset := and(0xff, not(upTo)) // `256 - (255 & upTo) - 1`.
             let base := and(keccak256(0x00, 0x40), not(0x7f))
             bits := shr(offset, shl(offset, sload(add(base, bucket)))) // `sload(add(base, bucket)) << offset >> offset`.
-            if iszero(or(bits, iszero(or(bucket, page)))) { // if we're on bucket or page boundary
+            if iszero(or(bits, iszero(or(bucket, page)))) {
+                // if we're on bucket or page boundary
                 for {} 1 {} {
                     if iszero(bucket) {
                         page := sub(page, 1)
@@ -286,7 +287,8 @@ library LibBitmap {
             let offset := and(0xff, begin)
             let base := and(keccak256(0x00, 0x40), not(0x7f))
             negBits := shl(offset, shr(offset, not(sload(add(base, bucket))))) // not(sload(add(base, bucket))) >> offset << offset
-            if iszero(negBits) { // if we're on bucket or page boundary
+            if iszero(negBits) {
+                // if we're on bucket or page boundary
                 let lastWord := shr(8, upTo)
                 for {} 1 {} {
                     bucket := add(bucket, 1)
