@@ -9,37 +9,37 @@ library LibMap {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev A uint8 map in storage.
-    /// @dev _ptr is the storage pointer to the first bucket of the map.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint8Map {
         uint256 _ptr;
     }
 
     /// @dev A uint16 map in storage.
-    /// @dev _ptr is the storage pointer to the first bucket of the map.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint16Map {
         uint256 _ptr;
     }
 
     /// @dev A uint32 map in storage.
-    /// @dev _ptr is the storage pointer to the first bucket of the map.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint32Map {
         uint256 _ptr;
     }
 
     /// @dev A uint40 map in storage. Useful for storing timestamps up to 34841 A.D.
-    /// @dev _ptr is the storage pointer to the first bucket of the map.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint40Map {
         uint256 _ptr;
     }
 
     /// @dev A uint64 map in storage.
-    /// @dev _ptr is the storage pointer to the first bucket of the map.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint64Map {
         uint256 _ptr;
     }
 
     /// @dev A uint128 map in storage.
-    /// @dev _ptr is the storage pointer to the first bucket of the map.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint128Map {
         uint256 _ptr;
     }
