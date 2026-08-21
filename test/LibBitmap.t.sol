@@ -224,7 +224,7 @@ contract LibBitmapTest is SoladyTest {
         assertEq(bitmap.findFirstUnset(256, 1000), 256);
         bitmap.set(0);
         assertEq(bitmap.findFirstUnset(0, 1000), 1);
-        bitmap.map[0] = type(uint256).max;
+        _setBucket(0, type(uint256).max);
         assertEq(bitmap.findFirstUnset(0, 1000), 256);
         bitmap.set(256);
         assertEq(bitmap.findFirstUnset(0, 1000), 257);
@@ -238,7 +238,7 @@ contract LibBitmapTest is SoladyTest {
     function testBitmapFindFirstUnset(uint256 begin, uint256 upTo, bytes32) public {
         unchecked {
             for (uint256 i; i != 5; ++i) {
-                bitmap.map[i] = type(uint256).max;
+                _setBucket(i, type(uint256).max);
             }
         }
 
@@ -336,6 +336,124 @@ contract LibBitmapTest is SoladyTest {
         }
     }
 
+    function testBitmapBatchCrossPage() public {
+        _checkBatchRange(32000, 2000, 300); // Page 0 -> page 1.
+        _checkBatchRange(65530, 12, 300); // Page 1 -> page 2, tiny straddle.
+        _checkBatchRange(32768 * 3 - 256, 32768 + 512, 300); // Spans more than 1 full page.
+        _checkBatchRange(5, 10, 4); // Single word.
+        _checkBatchRange(0, 257, 300); // Word boundary + 1.
+        _checkBatchRange(32768 * 5, 0, 4); // `amount = 0` no-op.
+        _checkBatchRange(700, 512, 300); // Exact word multiples, in-page.
+    }
+
+    function testBitmapBatchCrossPage(uint256 start, uint256 amount) public {
+        start = _bound(start, 0, 1 << 20);
+        amount = _bound(amount, 0, 5000);
+        _checkBatchRange(start, amount, 64);
+    }
+
+    function testBitmapPopCountCrossPage() public {
+        bitmap.setBatch(32000, 2000); // Page 0 -> page 1.
+        assertEq(bitmap.popCount(32000, 2000), 2000);
+        assertEq(bitmap.popCount(31000, 4000), 2000); // Superset.
+        assertEq(bitmap.popCount(32500, 100), 100); // Interior subset.
+        assertEq(bitmap.popCount(0, 32000), 0); // All below.
+        assertEq(bitmap.popCount(34000, 5000), 0); // All above.
+        assertEq(bitmap.popCount(32767, 2), 2); // Page boundary straddle.
+    }
+
+    function testBitmapPopCountCrossPage(uint256 start, uint256 amount) public {
+        start = _bound(start, 0, 1 << 20);
+        amount = _bound(amount, 1, 5000);
+        bitmap.setBatch(start, amount);
+        assertEq(bitmap.popCount(start, amount), amount);
+        if (start >= 256) assertEq(bitmap.popCount(start - 256, amount + 512), amount);
+    }
+
+    function testBitmapPopCountTwoWordRange() public {
+        bitmap.setBatch(0, 257); // Exactly two words.
+        assertEq(bitmap.popCount(0, 257), 257);
+        assertEq(bitmap.popCount(0, 512), 257);
+        assertEq(bitmap.popCount(0, 0), 0);
+    }
+
+    function testBitmapFindLastSetCrossPage() public {
+        uint256 nf = LibBitmap.NOT_FOUND;
+        assertEq(bitmap.findLastSet(100000), nf); // Empty map.
+        bitmap.set(40000); // Page 1.
+        assertEq(bitmap.findLastSet(50000), 40000); // Descend within page 1.
+        assertEq(bitmap.findLastSet(40000), 40000); // Exact hit.
+        assertEq(bitmap.findLastSet(39999), nf); // Below the only bit, cross to page 0.
+        bitmap.set(10); // Page 0.
+        assertEq(bitmap.findLastSet(39999), 10); // Full page-boundary descent.
+        bitmap.set(32767); // Last bit of page 0.
+        assertEq(bitmap.findLastSet(32768), 32767); // Straddle: probe page 1, find page 0.
+        assertEq(bitmap.findLastSet(32767), 32767);
+        assertEq(bitmap.findLastSet(32766), 10); // Masked out in own word.
+        bitmap.set(0);
+        assertEq(bitmap.findLastSet(9), 0);
+        bitmap.unset(0);
+        assertEq(bitmap.findLastSet(9), nf);
+    }
+
+    function testBitmapFindLastSetCrossPage(uint256 index, uint256 upTo) public {
+        index = _bound(index, 0, 1 << 17); // 4 pages.
+        upTo = _bound(upTo, 0, 1 << 17);
+        bitmap.set(index);
+        uint256 expected = index <= upTo ? index : LibBitmap.NOT_FOUND;
+        assertEq(bitmap.findLastSet(upTo), expected);
+    }
+
+    function testBitmapFindFirstUnsetCrossPage() public {
+        uint256 nf = LibBitmap.NOT_FOUND;
+        assertEq(bitmap.findFirstUnset(0, 100000), 0); // Empty map.
+        bitmap.setBatch(0, 256); // Word 0 fully set.
+        assertEq(bitmap.findFirstUnset(0, 1000), 256); // Begin in bucket 0, page 0.
+        assertEq(bitmap.findFirstUnset(5, 1000), 256);
+        bitmap.setBatch(0, 32768); // Page 0 fully set.
+        assertEq(bitmap.findFirstUnset(0, 100000), 32768); // Cross into page 1 bucket 0.
+        assertEq(bitmap.findFirstUnset(32512, 100000), 32768); // Begin in last bucket of page 0.
+        assertEq(bitmap.findFirstUnset(0, 32767), nf); // Bounded on a fully set page.
+        assertEq(bitmap.findFirstUnset(0, 40000), 32768);
+        bitmap.setBatch(32768, 100); // Partial next page.
+        assertEq(bitmap.findFirstUnset(0, 100000), 32868);
+        bitmap.unset(70000);
+        assertEq(bitmap.findFirstUnset(70000, 70000), 70000); // `begin == upTo`.
+        assertEq(bitmap.findFirstUnset(70001, 70000), nf); // `begin > upTo`.
+    }
+
+    function testBitmapFindFirstUnsetCrossPage(uint256 hole, uint256 begin, uint256 upTo) public {
+        hole = _bound(hole, 0, 1 << 17);
+        begin = _bound(begin, 0, 1 << 17);
+        upTo = _bound(upTo, begin, 1 << 17);
+        bitmap.setBatch(0, upTo + 300); // Cover the range, leave storage zero beyond.
+        bitmap.unset(hole);
+        uint256 expected = (hole >= begin && hole <= upTo) ? hole : LibBitmap.NOT_FOUND;
+        assertEq(bitmap.findFirstUnset(begin, upTo), expected);
+    }
+
+    /// @dev Round-trips `setBatch` and `unsetBatch` over `[start, start + amount)`
+    /// via `get`, with sentinel bits just outside the range and `pad` bits of
+    /// padding checked for stray writes.
+    function _checkBatchRange(uint256 start, uint256 amount, uint256 pad) internal {
+        if (start >= 1) bitmap.set(start - 1);
+        bitmap.set(start + amount);
+        bitmap.setBatch(start, amount);
+        for (uint256 i = start; i < start + amount; ++i) {
+            assertTrue(bitmap.get(i), "setBatch missed a bit");
+        }
+        bitmap.unsetBatch(start, amount);
+        for (uint256 i = start; i < start + amount; ++i) {
+            assertFalse(bitmap.get(i), "unsetBatch missed a bit");
+        }
+        if (start >= 1) assertTrue(bitmap.get(start - 1), "clobbered bit below range");
+        assertTrue(bitmap.get(start + amount), "clobbered bit above range");
+        for (uint256 i = 1; i <= pad; ++i) {
+            assertFalse(bitmap.get(start + amount + i), "wrote above range");
+            if (start > i) assertFalse(bitmap.get(start - 1 - i), "wrote below range");
+        }
+    }
+
     function _testBitmapSetBatch(uint256 start, uint256 amount) internal {
         uint256 n = 1000;
         (start, amount) = _boundStartAndAmount(start, amount, n);
@@ -407,8 +525,19 @@ contract LibBitmapTest is SoladyTest {
     function _resetBitmap(uint256 bucketValue, uint256 bucketEnd) private {
         unchecked {
             for (uint256 i; i < bucketEnd; ++i) {
-                bitmap.map[i] = bucketValue;
+                _setBucket(i, bucketValue);
             }
+        }
+    }
+
+    /// @dev Writes a bucket directly, mirroring the library's paged layout:
+    /// word `bucket` lives at `keccak256(bucket >> 7, slot) & ~0x7f` + `bucket & 0x7f`.
+    function _setBucket(uint256 bucket, uint256 value) private {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, shr(7, bucket))
+            mstore(0x20, bitmap.slot)
+            sstore(add(and(keccak256(0x00, 0x40), not(0x7f)), and(bucket, 0x7f)), value)
         }
     }
 }
