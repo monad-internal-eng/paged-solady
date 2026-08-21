@@ -9,33 +9,39 @@ library LibMap {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev A uint8 map in storage.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint8Map {
-        mapping(uint256 => uint256) map;
+        uint256 _ptr;
     }
 
     /// @dev A uint16 map in storage.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint16Map {
-        mapping(uint256 => uint256) map;
+        uint256 _ptr;
     }
 
     /// @dev A uint32 map in storage.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint32Map {
-        mapping(uint256 => uint256) map;
+        uint256 _ptr;
     }
 
     /// @dev A uint40 map in storage. Useful for storing timestamps up to 34841 A.D.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint40Map {
-        mapping(uint256 => uint256) map;
+        uint256 _ptr;
     }
 
     /// @dev A uint64 map in storage.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint64Map {
-        mapping(uint256 => uint256) map;
+        uint256 _ptr;
     }
 
     /// @dev A uint128 map in storage.
+    /// @dev _ptr is a virtual pointer to represent the struct in storage
     struct Uint128Map {
-        mapping(uint256 => uint256) map;
+        uint256 _ptr;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -46,9 +52,11 @@ library LibMap {
     function get(Uint8Map storage map, uint256 index) internal view returns (uint8 result) {
         /// @solidity memory-safe-assembly
         assembly {
+            mstore(0x00, shr(12, index))
             mstore(0x20, map.slot)
-            mstore(0x00, shr(5, index))
-            result := byte(and(31, not(index)), sload(keccak256(0x00, 0x40)))
+            let base := and(keccak256(0x00, 0x40), not(0x7f))
+            let bucket := add(base, and(shr(5, index), 0x7f)) // Storage bucket.
+            result := byte(and(31, not(index)), sload(bucket))
         }
     }
 
@@ -56,57 +64,79 @@ library LibMap {
     function set(Uint8Map storage map, uint256 index, uint8 value) internal {
         /// @solidity memory-safe-assembly
         assembly {
+            mstore(0x00, shr(12, index))
             mstore(0x20, map.slot)
-            mstore(0x00, shr(5, index))
-            let s := keccak256(0x00, 0x40) // Storage slot.
-            mstore(0x00, sload(s))
+            let base := and(keccak256(0x00, 0x40), not(0x7f)) // Storage slot.
+            let bucket := add(base, and(shr(5, index), 0x7f)) // Storage bucket.
+            mstore(0x00, sload(bucket))
             mstore8(and(31, not(index)), value)
-            sstore(s, mload(0x00))
+            sstore(bucket, mload(0x00))
         }
     }
 
     /// @dev Returns the uint16 value at `index` in `map`.
     function get(Uint16Map storage map, uint256 index) internal view returns (uint16 result) {
-        result = uint16(map.map[index >> 4] >> ((index & 15) << 4));
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, shr(11, index))
+            mstore(0x20, map.slot)
+            let base := and(keccak256(0x00, 0x40), not(0x7f))
+            let bucket := add(base, and(shr(4, index), 0x7f)) // Storage bucket
+            result := and(shr(shl(4, and(index, 15)), sload(bucket)), 0xffff)
+        }
     }
 
     /// @dev Updates the uint16 value at `index` in `map`.
     function set(Uint16Map storage map, uint256 index, uint16 value) internal {
         /// @solidity memory-safe-assembly
         assembly {
+            mstore(0x00, shr(11, index))
             mstore(0x20, map.slot)
-            mstore(0x00, shr(4, index))
-            let s := keccak256(0x00, 0x40) // Storage slot.
+            let s := and(keccak256(0x00, 0x40), not(0x7f)) // Storage slot.
+            let b := add(s, and(shr(4, index), 0x7f)) // Storage bucket.
             let o := shl(4, and(index, 15)) // Storage slot offset (bits).
-            let v := sload(s) // Storage slot value.
+            let v := sload(b) // Storage slot value.
             let m := 0xffff // Value mask.
-            sstore(s, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
+            sstore(b, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
         }
     }
 
     /// @dev Returns the uint32 value at `index` in `map`.
     function get(Uint32Map storage map, uint256 index) internal view returns (uint32 result) {
-        result = uint32(map.map[index >> 3] >> ((index & 7) << 5));
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, shr(10, index))
+            mstore(0x20, map.slot)
+            let base := and(keccak256(0x00, 0x40), not(0x7f))
+            let bucket := add(base, and(shr(3, index), 0x7f)) // Storage bucket.
+            result := and(shr(shl(5, and(index, 7)), sload(bucket)), 0xffffffff)
+        }
     }
 
     /// @dev Updates the uint32 value at `index` in `map`.
     function set(Uint32Map storage map, uint256 index, uint32 value) internal {
         /// @solidity memory-safe-assembly
         assembly {
+            mstore(0x00, shr(10, index))
             mstore(0x20, map.slot)
-            mstore(0x00, shr(3, index))
-            let s := keccak256(0x00, 0x40) // Storage slot.
+            let s := and(keccak256(0x00, 0x40), not(0x7f)) // Storage slot.
+            let b := add(s, and(shr(3, index), 0x7f)) // Storage bucket.
             let o := shl(5, and(index, 7)) // Storage slot offset (bits).
-            let v := sload(s) // Storage slot value.
+            let v := sload(b) // Storage slot value.
             let m := 0xffffffff // Value mask.
-            sstore(s, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
+            sstore(b, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
         }
     }
 
     /// @dev Returns the uint40 value at `index` in `map`.
     function get(Uint40Map storage map, uint256 index) internal view returns (uint40 result) {
-        unchecked {
-            result = uint40(map.map[index / 6] >> ((index % 6) * 40));
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, div(index, 768)) // 768 = floor(256 / 40) * 128
+            mstore(0x20, map.slot)
+            let base := and(keccak256(0x00, 0x40), not(0x7f))
+            let bucket := add(base, mod(div(index, 6), 128)) // Storage bucket.
+            result := and(shr(mul(40, mod(index, 6)), sload(bucket)), 0xffffffffff)
         }
     }
 
@@ -114,51 +144,69 @@ library LibMap {
     function set(Uint40Map storage map, uint256 index, uint40 value) internal {
         /// @solidity memory-safe-assembly
         assembly {
+            mstore(0x00, div(index, 768)) // 768 = floor(256 / 40) * 128
             mstore(0x20, map.slot)
-            mstore(0x00, div(index, 6))
-            let s := keccak256(0x00, 0x40) // Storage slot.
+            let base := and(keccak256(0x00, 0x40), not(0x7f))
+            let bucket := add(base, mod(div(index, 6), 128)) // Storage bucket.
             let o := mul(40, mod(index, 6)) // Storage slot offset (bits).
-            let v := sload(s) // Storage slot value.
+            let v := sload(bucket) // Storage slot value.
             let m := 0xffffffffff // Value mask.
-            sstore(s, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
+            sstore(bucket, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
         }
     }
 
     /// @dev Returns the uint64 value at `index` in `map`.
     function get(Uint64Map storage map, uint256 index) internal view returns (uint64 result) {
-        result = uint64(map.map[index >> 2] >> ((index & 3) << 6));
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, shr(9, index))
+            mstore(0x20, map.slot)
+            let base := and(keccak256(0x00, 0x40), not(0x7f))
+            let bucket := add(base, and(shr(2, index), 0x7f)) // Storage bucket.
+            result := and(shr(shl(6, and(index, 3)), sload(bucket)), 0xffffffffffffffff)
+        }
     }
 
     /// @dev Updates the uint64 value at `index` in `map`.
     function set(Uint64Map storage map, uint256 index, uint64 value) internal {
         /// @solidity memory-safe-assembly
         assembly {
+            mstore(0x00, shr(9, index))
             mstore(0x20, map.slot)
-            mstore(0x00, shr(2, index))
-            let s := keccak256(0x00, 0x40) // Storage slot.
+            let s := and(keccak256(0x00, 0x40), not(0x7f))
+            let b := add(s, and(shr(2, index), 0x7f)) // Storage bucket.
             let o := shl(6, and(index, 3)) // Storage slot offset (bits).
-            let v := sload(s) // Storage slot value.
+            let v := sload(b) // Storage slot value.
             let m := 0xffffffffffffffff // Value mask.
-            sstore(s, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
+            sstore(b, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
         }
     }
 
     /// @dev Returns the uint128 value at `index` in `map`.
     function get(Uint128Map storage map, uint256 index) internal view returns (uint128 result) {
-        result = uint128(map.map[index >> 1] >> ((index & 1) << 7));
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, shr(8, index))
+            mstore(0x20, map.slot)
+            let s := and(keccak256(0x00, 0x40), not(0x7f)) // Storage slot.
+            let b := add(s, and(shr(1, index), 0x7f)) // Storage bucket.
+            let o := shl(7, and(index, 1)) // Storage slot offset (bits).
+            result := and(shr(o, sload(b)), 0xffffffffffffffffffffffffffffffff)
+        }
     }
 
     /// @dev Updates the uint128 value at `index` in `map`.
     function set(Uint128Map storage map, uint256 index, uint128 value) internal {
         /// @solidity memory-safe-assembly
         assembly {
+            mstore(0x00, shr(8, index))
             mstore(0x20, map.slot)
-            mstore(0x00, shr(1, index))
-            let s := keccak256(0x00, 0x40) // Storage slot.
+            let s := and(keccak256(0x00, 0x40), not(0x7f)) // Storage slot.
+            let b := add(s, and(shr(1, index), 0x7f)) // Storage bucket.
             let o := shl(7, and(index, 1)) // Storage slot offset (bits).
-            let v := sload(s) // Storage slot value.
+            let v := sload(b) // Storage slot value.
             let m := 0xffffffffffffffffffffffffffffffff // Value mask.
-            sstore(s, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
+            sstore(b, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
         }
     }
 
@@ -168,10 +216,15 @@ library LibMap {
         view
         returns (uint256 result)
     {
-        unchecked {
-            uint256 d = _rawDiv(256, bitWidth); // Bucket size.
-            uint256 m = (1 << bitWidth) - 1; // Value mask.
-            result = (map[_rawDiv(index, d)] >> (_rawMod(index, d) * bitWidth)) & m;
+        /// @solidity memory-safe-assembly
+        assembly {
+            let d := div(256, bitWidth)
+            mstore(0x00, div(index, mul(d, 128)))
+            mstore(0x20, map.slot)
+            let base := and(keccak256(0x00, 0x40), not(0x7f))
+            let bucket := add(base, mod(div(index, d), 128)) // Storage bucket.
+            let o := mul(bitWidth, mod(index, d)) // Storage slot offset (bits).
+            result := and(shr(o, sload(bucket)), sub(shl(bitWidth, 1), 1))
         }
     }
 
@@ -182,11 +235,17 @@ library LibMap {
         uint256 value,
         uint256 bitWidth
     ) internal {
-        unchecked {
-            uint256 d = _rawDiv(256, bitWidth); // Bucket size.
-            uint256 m = (1 << bitWidth) - 1; // Value mask.
-            uint256 o = _rawMod(index, d) * bitWidth; // Storage slot offset (bits).
-            map[_rawDiv(index, d)] ^= (((map[_rawDiv(index, d)] >> o) ^ value) & m) << o;
+        /// @solidity memory-safe-assembly
+        assembly {
+            let d := div(256, bitWidth)
+            mstore(0x00, div(index, mul(d, 128)))
+            mstore(0x20, map.slot)
+            let base := and(keccak256(0x00, 0x40), not(0x7f))
+            let bucket := add(base, mod(div(index, d), 128)) // Storage bucket.
+            let o := mul(bitWidth, mod(index, d)) // Storage slot offset (bits).
+            let v := sload(bucket) // Storage slot value.
+            let m := sub(shl(bitWidth, 1), 1) // Value mask.
+            sstore(bucket, xor(v, shl(o, and(m, xor(shr(o, v), value)))))
         }
     }
 
@@ -206,7 +265,12 @@ library LibMap {
         view
         returns (bool found, uint256 index)
     {
-        return searchSorted(map.map, needle, start, end, 8);
+        uint256 slot;
+        /// @solidity memory-safe-assembly
+        assembly {
+            slot := map.slot
+        }
+        return _searchSorted(slot, needle, start, end, 8);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -215,7 +279,12 @@ library LibMap {
         view
         returns (bool found, uint256 index)
     {
-        return searchSorted(map.map, needle, start, end, 16);
+        uint256 slot;
+        /// @solidity memory-safe-assembly
+        assembly {
+            slot := map.slot
+        }
+        return _searchSorted(slot, needle, start, end, 16);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -224,7 +293,12 @@ library LibMap {
         view
         returns (bool found, uint256 index)
     {
-        return searchSorted(map.map, needle, start, end, 32);
+        uint256 slot;
+        /// @solidity memory-safe-assembly
+        assembly {
+            slot := map.slot
+        }
+        return _searchSorted(slot, needle, start, end, 32);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -233,7 +307,12 @@ library LibMap {
         view
         returns (bool found, uint256 index)
     {
-        return searchSorted(map.map, needle, start, end, 40);
+        uint256 slot;
+        /// @solidity memory-safe-assembly
+        assembly {
+            slot := map.slot
+        }
+        return _searchSorted(slot, needle, start, end, 40);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -242,7 +321,12 @@ library LibMap {
         view
         returns (bool found, uint256 index)
     {
-        return searchSorted(map.map, needle, start, end, 64);
+        uint256 slot;
+        /// @solidity memory-safe-assembly
+        assembly {
+            slot := map.slot
+        }
+        return _searchSorted(slot, needle, start, end, 64);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -251,7 +335,12 @@ library LibMap {
         view
         returns (bool found, uint256 index)
     {
-        return searchSorted(map.map, needle, start, end, 128);
+        uint256 slot;
+        /// @solidity memory-safe-assembly
+        assembly {
+            slot := map.slot
+        }
+        return _searchSorted(slot, needle, start, end, 128);
     }
 
     /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
@@ -262,6 +351,22 @@ library LibMap {
         uint256 end,
         uint256 bitWidth
     ) internal view returns (bool found, uint256 index) {
+        uint256 slot;
+        /// @solidity memory-safe-assembly
+        assembly {
+            slot := map.slot
+        }
+        return _searchSorted(slot, needle, start, end, bitWidth);
+    }
+
+    /// @dev Returns whether `map` contains `needle`, and the index of `needle`.
+    function _searchSorted(
+        uint256 slot,
+        uint256 needle,
+        uint256 start,
+        uint256 end,
+        uint256 bitWidth
+    ) private view returns (bool found, uint256 index) {
         unchecked {
             if (start >= end) end = start;
             uint256 t;
@@ -273,7 +378,16 @@ library LibMap {
             while (true) {
                 index = (l & h) + ((l ^ h) >> 1);
                 if (l > h) break;
-                t = (map[_rawDiv(index + o, d)] >> (_rawMod(index + o, d) * bitWidth)) & m;
+                uint256 value;
+                /// @solidity memory-safe-assembly
+                assembly {
+                    let idx := add(index, o)
+                    mstore(0x00, div(idx, mul(d, 128)))
+                    mstore(0x20, slot)
+                    let base := and(keccak256(0x00, 0x40), not(0x7f))
+                    value := sload(add(base, mod(div(idx, d), 128))) // Storage value.
+                }
+                t = (value >> (_rawMod(index + o, d) * bitWidth)) & m;
                 if (t == needle) break;
                 if (needle <= t) h = index - 1;
                 else l = index + 1;
